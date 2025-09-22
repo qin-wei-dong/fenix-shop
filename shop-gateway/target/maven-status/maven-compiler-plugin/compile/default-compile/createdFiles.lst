@@ -1,0 +1,5 @@
+com/fenix/shop/gateway/filter/MetricsGlobalFilter.class
+com/fenix/shop/gateway/filter/AuthGlobalFilter.class
+com/fenix/shop/gateway/GatewayApplication.class
+com/fenix/shop/gateway/config/GatewayConfig.class
+com/fenix/shop/gateway/controller/MonitorController.class

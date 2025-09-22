@@ -1,0 +1,16 @@
+# Elasticsearch公共配置文件
+# 统一管理所有服务的Elasticsearch连接和基础配置
+# 为什么这样配置：确保所有使用ES的服务连接参数一致，便于集中管理和维护
+
+spring:
+  # Elasticsearch配置
+  # 用于全文搜索、数据分析和实时索引管理
+  elasticsearch:
+    uris: http://localhost:9200     # Elasticsearch集群地址，支持多节点配置，用逗号分隔
+    username: elastic               # Elasticsearch用户名，用于安全认证
+    password: changeme              # Elasticsearch密码，生产环境需要修改默认密码
+    connection-timeout: 3s          # 连接超时时间，3秒内建立连接
+    socket-timeout: 5s              # 请求超时时间，5秒内完成请求响应
+    # 仓库配置
+    repositories:
+      enabled: true                 # 启用Spring Data Elasticsearch仓库，支持自动查询方法生成

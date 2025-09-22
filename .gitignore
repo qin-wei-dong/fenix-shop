@@ -1,0 +1,14 @@
+node_modules
+# Root-level Node artifacts (portal-only frontend)
+/package.json
+/package-lock.json
+/node_modules/
+
+# Java compiled artifacts
+*.class
+/target/
+**/target/
+
+**/uploads/
+/uploads/
+!/shop-user/src/main/resources/uploads/

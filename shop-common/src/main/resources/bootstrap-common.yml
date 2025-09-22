@@ -1,0 +1,19 @@
+spring:
+  cloud:
+    nacos:
+      discovery:
+        server-addr: localhost:8848
+        namespace: public
+        group: DEFAULT_GROUP
+        username: nacos
+        password: nacos
+        enabled: true
+        register-enabled: true
+      config:
+        server-addr: localhost:8848
+        file-extension: yaml
+        namespace: public
+        group: DEFAULT_GROUP
+        username: nacos
+        password: nacos
+        enabled: false  # 暂时禁用配置中心，避免认证问题 

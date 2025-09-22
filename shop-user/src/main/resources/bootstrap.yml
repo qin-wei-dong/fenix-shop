@@ -1,0 +1,6 @@
+spring:
+  application:
+    name: shop-user
+  # 引入通用配置
+  config:
+    import: optional:classpath:bootstrap-common.yml 

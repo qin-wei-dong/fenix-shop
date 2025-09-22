@@ -1,0 +1,25 @@
+# RocketMQ公共配置文件
+# 统一管理所有服务的RocketMQ连接和基础配置
+# 为什么这样配置：确保所有使用MQ的服务连接参数一致，便于集中管理和维护
+
+# RocketMQ消息队列配置
+# 用于服务间异步通信、事件驱动架构和数据同步
+rocketmq:
+  name-server: localhost:9876       # RocketMQ名称服务器地址，生产环境需要配置集群地址
+  
+  # 生产者公共配置
+  # 所有服务作为消息生产者时的基础配置
+  producer:
+    send-message-timeout: 3000      # 发送消息超时时间(毫秒)，3秒超时
+    compress-message-body-threshold: 4096  # 消息压缩阈值(字节)，超过4KB自动压缩
+    max-message-size: 4194304       # 最大消息大小(字节)，4MB限制
+    retry-times-when-send-failed: 2 # 同步发送失败重试次数
+    retry-times-when-send-async-failed: 0  # 异步发送失败重试次数
+    retry-next-server: true         # 失败时是否尝试下一个服务器
+  
+  # 消费者公共配置
+  # 所有服务作为消息消费者时的基础配置
+  consumer:
+    consume-thread-min: 5           # 最小消费线程数
+    consume-thread-max: 20          # 最大消费线程数
+    consume-message-batch-max-size: 1  # 批量消费最大消息数

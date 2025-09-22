@@ -1,0 +1,276 @@
+# ==========================================
+# 凤凰商城 - API网关服务配置文件
+# ==========================================
+# 功能说明：
+# 1. 统一API入口，所有前端请求通过网关路由到相应的微服务
+# 2. 提供限流、负载均衡、跨域处理等横切关注点功能
+# 3. 集成Nacos服务发现，实现动态路由和服务治理
+# 4. 支持Redis限流，保护后端服务免受流量冲击
+# ==========================================
+
+# 服务器配置
+server:
+  port: 8090  # 网关服务端口，前端所有API请求的统一入口
+
+# Spring Boot核心配置
+spring:
+  application:
+    name: shop-gateway  # 服务名称，用于服务发现和监控识别
+
+  # 引用公共配置文件
+  # 为什么这样做：避免重复配置，保持配置一致性，便于统一管理和维护
+  config:
+    import:
+      - optional:classpath:redis-common.yml      # 引用公共Redis配置，用于限流功能
+
+  # 服务发现和配置中心配置
+  cloud:
+    nacos:
+      # 服务发现配置 - 用于发现和注册微服务实例
+      discovery:
+        server-addr: localhost:8848  # Nacos服务器地址
+        namespace: public            # 命名空间，用于环境隔离
+        group: DEFAULT_GROUP         # 服务分组，用于逻辑分组
+        username: nacos              # Nacos认证用户名
+        password: nacos              # Nacos认证密码
+
+      # 配置中心配置 - 用于动态配置管理
+      config:
+        server-addr: localhost:8848  # Nacos配置中心地址
+        file-extension: yml          # 配置文件格式
+        namespace: public            # 配置命名空间
+        group: DEFAULT_GROUP         # 配置分组
+        username: nacos              # 配置中心认证用户名
+        password: nacos              # 配置中心认证密码
+
+    # Spring Cloud Gateway路由配置
+    gateway:
+      # 服务发现路由配置 - 自动发现并路由到注册的服务
+      discovery:
+        locator:
+          enabled: true                # 启用服务发现路由，自动为注册的服务创建路由
+          lower-case-service-id: true  # 将服务ID转换为小写，便于URL访问
+
+      # 手动路由规则配置 - 精确控制路由行为和添加过滤器
+      routes:
+        # ==========================================
+        # 用户服务路由配置
+        # ==========================================
+        # 功能：处理用户注册、登录、个人信息管理等请求
+        # 路径：/api/user/** -> shop-user服务
+        # 限流：100次/秒，突发200次
+        - id: shop-user                    # 路由唯一标识符
+          uri: lb://shop-user              # 目标服务URI，lb表示负载均衡
+          predicates:                          # 路由匹配条件
+            - Path=/api/user/**                # 匹配所有以/api/user/开头的请求
+          filters:                             # 路由过滤器链
+            - StripPrefix=0                    # 不剥离路径前缀，保持完整路径转发
+            - name: RequestRateLimiter         # Redis限流过滤器
+              args:
+                redis-rate-limiter.replenishRate: 100    # 令牌桶每秒补充100个令牌
+                redis-rate-limiter.burstCapacity: 200    # 令牌桶最大容量200个令牌
+                key-resolver: "#{@ipKeyResolver}"        # 基于IP地址进行限流
+
+        # ==========================================
+        # 商品服务路由配置
+        # ==========================================
+        # 功能：处理商品查询、分类、品牌等请求
+        # 路径：/api/product/** -> shop-product服务
+        # 限流：200次/秒，突发400次（商品查询频率较高）
+        - id: shop-product                 # 路由唯一标识符
+          uri: lb://shop-product           # 目标服务URI，通过Nacos负载均衡
+          predicates:                          # 路由匹配条件
+            - Path=/api/product/**             # 匹配所有以/api/product/开头的请求
+          filters:                             # 路由过滤器链
+            - StripPrefix=0                    # 保持完整路径，因为商品服务context-path为/api/product
+            - name: RequestRateLimiter         # Redis限流过滤器
+              args:
+                redis-rate-limiter.replenishRate: 200    # 商品查询频率高，每秒200个令牌
+                redis-rate-limiter.burstCapacity: 400    # 支持突发流量，最大400个令牌
+                key-resolver: "#{@ipKeyResolver}"        # 基于客户端IP进行限流
+        
+        # ==========================================
+        # 搜索服务路由配置
+        # ==========================================
+        # 功能：处理商品搜索、Elasticsearch查询等请求
+        # 路径：/api/search/** -> shop-search服务
+        # 限流：300次/秒，突发600次（搜索频率最高）
+        - id: shop-search                  # 路由唯一标识符
+          uri: lb://shop-search            # 目标搜索服务，通过Nacos负载均衡
+          predicates:                          # 路由匹配条件
+            - Path=/api/search/**              # 匹配所有以/api/search/开头的请求
+          filters:                             # 路由过滤器链
+            - StripPrefix=0                    # 保持完整路径转发
+            - name: RequestRateLimiter         # Redis限流过滤器
+              args:
+                redis-rate-limiter.replenishRate: 300    # 搜索频率最高，每秒300个令牌
+                redis-rate-limiter.burstCapacity: 600    # 支持搜索突发流量，最大600个令牌
+                key-resolver: "#{@ipKeyResolver}"        # 基于客户端IP进行限流
+
+        # ==========================================
+        # 购物车服务路由配置
+        # ==========================================
+        # 功能：处理购物车增删改查、结算等请求
+        # 路径：/api/cart/** -> shop-cart服务
+        # 限流：150次/秒，突发300次（中等频率）
+        - id: shop-cart                    # 路由唯一标识符
+          uri: lb://shop-cart              # 目标购物车服务，通过Nacos负载均衡
+          predicates:                          # 路由匹配条件
+            - Path=/api/cart/**                # 匹配所有以/api/cart/开头的请求
+          filters:                             # 路由过滤器链
+            - StripPrefix=0                    # 保持完整路径转发
+            - name: RequestRateLimiter         # Redis限流过滤器
+              args:
+                redis-rate-limiter.replenishRate: 150    # 购物车操作中等频率，每秒150个令牌
+                redis-rate-limiter.burstCapacity: 300    # 支持突发操作，最大300个令牌
+                key-resolver: "#{@ipKeyResolver}"        # 基于客户端IP进行限流
+        
+        # ==========================================
+        # 订单服务路由配置
+        # ==========================================
+        # 功能：处理订单创建、查询、状态更新等请求
+        # 路径：/api/order/** -> shop-order服务
+        # 限流：100次/秒，突发200次（订单操作频率适中）
+        - id: shop-order                   # 路由唯一标识符
+          uri: lb://shop-order             # 目标订单服务，通过Nacos负载均衡
+          predicates:                          # 路由匹配条件
+            - Path=/api/order/**               # 匹配所有以/api/order/开头的请求
+          filters:                             # 路由过滤器链
+            - StripPrefix=0                    # 保持完整路径转发
+            - name: RequestRateLimiter         # Redis限流过滤器
+              args:
+                redis-rate-limiter.replenishRate: 100    # 订单操作适中频率，每秒100个令牌
+                redis-rate-limiter.burstCapacity: 200    # 支持订单突发操作，最大200个令牌
+                key-resolver: "#{@ipKeyResolver}"        # 基于客户端IP进行限流
+
+        # ==========================================
+        # 支付服务路由配置
+        # ==========================================
+        # 功能：处理支付请求、支付回调、支付状态查询等
+        # 路径：/api/payment/** -> shop-payment服务
+        # 限流：50次/秒，突发100次（支付操作频率较低但重要）
+        - id: shop-payment                 # 路由唯一标识符
+          uri: lb://shop-payment           # 目标支付服务，通过Nacos负载均衡
+          predicates:                          # 路由匹配条件
+            - Path=/api/payment/**             # 匹配所有以/api/payment/开头的请求
+          filters:                             # 路由过滤器链
+            - StripPrefix=0                    # 保持完整路径转发
+            - name: RequestRateLimiter         # Redis限流过滤器
+              args:
+                redis-rate-limiter.replenishRate: 50     # 支付操作频率较低，每秒50个令牌
+                redis-rate-limiter.burstCapacity: 100    # 支持支付突发操作，最大100个令牌
+                key-resolver: "#{@ipKeyResolver}"        # 基于客户端IP进行限流
+
+        # ==========================================
+        # CDC数据同步服务路由配置
+        # ==========================================
+        # 功能：处理数据变更捕获、同步状态查询等请求
+        # 路径：/api/cdc/** -> shop-cdc服务
+        # 限流：100次/秒，突发200次（内部服务调用为主）
+        - id: shop-cdc                     # 路由唯一标识符
+          uri: lb://shop-cdc               # 目标CDC服务，通过Nacos负载均衡
+          predicates:                          # 路由匹配条件
+            - Path=/api/cdc/**                 # 匹配所有以/api/cdc/开头的请求
+          filters:                             # 路由过滤器链
+            - StripPrefix=0                    # 保持完整路径转发
+            - name: RequestRateLimiter         # Redis限流过滤器
+              args:
+                redis-rate-limiter.replenishRate: 100    # CDC服务适中频率，每秒100个令牌
+                redis-rate-limiter.burstCapacity: 200    # 支持数据同步突发操作，最大200个令牌
+                key-resolver: "#{@ipKeyResolver}"        # 基于客户端IP进行限流
+
+        # ==========================================
+        # 网关监控API路由配置（特殊路由）
+        # ==========================================
+        # 功能：网关自身的监控和管理接口，不转发到后端服务
+        # 路径：/api/monitor/** -> 本地处理
+        # 说明：no://op表示不进行转发，由网关本身处理
+        - id: gateway-monitor                  # 路由唯一标识符
+          uri: no://op                         # 特殊URI，表示不转发，本地处理
+          predicates:                          # 路由匹配条件
+            - Path=/api/monitor/**             # 匹配所有以/api/monitor/开头的请求
+          filters:                             # 路由过滤器链
+            - StripPrefix=0                    # 保持完整路径
+
+      # ==========================================
+      # 全局过滤器配置
+      # ==========================================
+      # 应用于所有路由的默认过滤器
+      default-filters:
+        # 去重响应头，避免CORS相关头部重复
+        - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+        # 添加默认响应头，用于标识网关处理
+        - AddResponseHeader=X-Response-Default-Foo, Default-Bar
+
+      # ==========================================
+      # 全局跨域配置（CORS）
+      # ==========================================
+      # 解决前端跨域访问问题，允许所有来源的请求
+      globalcors:
+        cors-configurations:
+          '[/**]':                             # 匹配所有路径
+            allowedOriginPatterns: "*"         # 允许所有来源（开发环境配置）
+            allowedMethods:                    # 允许的HTTP方法
+              - GET                            # 查询操作
+              - POST                           # 创建操作
+              - PUT                            # 更新操作
+              - DELETE                         # 删除操作
+              - OPTIONS                        # 预检请求
+            allowedHeaders: "*"                # 允许所有请求头
+            allowCredentials: true             # 允许携带认证信息（Cookie等）
+            maxAge: 3600                       # 预检请求缓存时间（秒）
+
+  # ==========================================
+  # Redis配置说明
+  # ==========================================
+  # Redis配置已通过 redis-common.yml 公共配置文件引入
+  # 用于存储限流令牌桶状态和计数器，避免重复配置，保持一致性
+
+# ==========================================
+# 日志配置
+# ==========================================
+# 用于调试网关路由、负载均衡和服务发现问题
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG              # 网关核心日志，显示路由匹配和过滤器执行
+    org.springframework.web.reactive: DEBUG               # 响应式Web框架日志，显示请求处理流程
+    reactor.netty: DEBUG                                   # Netty网络层日志，显示连接和数据传输
+    '[org.springframework.cloud.loadbalancer]': DEBUG     # 负载均衡器日志，显示服务实例选择
+    '[com.alibaba.nacos]': DEBUG                          # Nacos客户端日志，显示服务发现和注册
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{50} - %msg%n"  # 控制台日志格式
+
+# ==========================================
+# Spring Boot Actuator监控配置
+# ==========================================
+# 提供网关运行状态监控和管理端点
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,gateway    # 暴露的监控端点
+        # health: 健康检查端点，显示网关和依赖服务状态
+        # info: 应用信息端点，显示版本和构建信息
+        # metrics: 指标端点，显示性能和使用统计
+        # gateway: 网关专用端点，显示路由和过滤器信息
+  endpoint:
+    health:
+      show-details: when-authorized             # 健康检查详情显示策略
+    gateway:
+      enabled: true                             # 启用网关管理端点
+
+# ==========================================
+# 网关自定义配置
+# ==========================================
+# 网关级别的超时和重试策略配置
+gateway:
+  # 超时配置（毫秒）
+  timeout:
+    connect: 3000                               # 连接后端服务超时时间
+    response: 30000                             # 等待后端服务响应超时时间
+
+  # 重试配置
+  retry:
+    times: 3                                    # 最大重试次数
+    statuses: BAD_GATEWAY,GATEWAY_TIMEOUT       # 触发重试的HTTP状态码
+    methods: GET,POST                           # 允许重试的HTTP方法

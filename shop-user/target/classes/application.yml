@@ -1,0 +1,232 @@
+# ==========================================
+# 用户服务配置文件
+# 功能：集中管理用户服务的所有配置项
+# 技术：Spring Boot YAML配置文件格式
+# 优势：配置集中化，便于维护和管理
+# ==========================================
+
+# ==========================================
+# 1. 服务基础配置
+# 功能：定义服务端口和上下文路径
+# 技术：Spring Boot内嵌Tomcat配置
+# 优势：独立部署，便于服务识别
+# ==========================================
+server:
+  port: 8091
+  servlet:
+    context-path: /api/user
+
+# ==========================================
+# 2. Spring框架配置
+# 功能：Spring核心框架和第三方集成配置
+# 技术：Spring Boot自动配置机制
+# 优势：简化配置，提高开发效率
+# ==========================================
+spring:
+  config:
+    import:
+#      - optional:classpath:redis-common.yml
+      - optional:classpath:database-common.yml
+      - optional:classpath:mybatis-common.yml
+
+  jackson:
+    # JSON序列化日期格式配置
+    # 功能：统一日期时间格式输出
+    # 技术：Jackson JSON处理库
+    # 优势：前后端数据格式一致
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+    serialization:
+      write-dates-as-timestamps: false
+      
+  mvc:
+    # MVC异常处理配置
+    # 功能：404错误统一处理
+    # 技术：Spring MVC异常处理机制
+    # 优势：提供友好的错误响应
+    throw-exception-if-no-handler-found: true
+    static-path-pattern: /static/**
+    
+  main:
+    # Bean定义覆盖配置
+    # 功能：允许Bean定义覆盖和循环引用
+    # 技术：Spring容器配置
+    # 优势：提高配置灵活性，解决复杂依赖
+    allow-bean-definition-overriding: true
+    allow-circular-references: true
+    
+  # 文件上传配置
+  # 功能：配置文件上传限制和路径
+  # 技术：Spring Boot Multipart配置
+  # 优势：控制上传文件大小，提高安全性
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 2MB      # 单个文件最大尺寸
+      max-request-size: 10MB   # 整个请求最大尺寸
+      file-size-threshold: 0   # 文件写入磁盘的阈值
+
+# ==========================================
+# 3. MyBatis Plus配置（用户服务特定）
+# 功能：数据访问层ORM配置
+# 技术：MyBatis Plus增强框架
+# 优势：简化数据库操作，提供丰富的CRUD功能
+# ==========================================
+mybatis-plus:
+  # Mapper文件位置配置
+  # 功能：指定SQL映射文件路径
+  # 技术：MyBatis XML映射机制
+  # 优势：支持复杂SQL和动态SQL
+  mapper-locations: classpath:mapper/**/*.xml
+  
+  # 实体类包路径配置
+  # 功能：自动扫描实体类，简化配置
+  # 技术：MyBatis类型别名机制
+  # 优势：减少XML中的全限定类名
+  type-aliases-package: com.fenix.shop.user.entity
+  
+  global-config:
+    db-config:
+      # 表名前缀配置
+      # 功能：统一表名命名规范
+      # 技术：MyBatis Plus全局配置
+      # 优势：保持数据库表命名一致性
+      table-prefix: t_
+      
+      # 主键生成策略配置
+      # 功能：使用数据库自增主键
+      # 技术：数据库AUTO_INCREMENT机制
+      # 优势：保持与现有用户表结构一致，避免数据冲突
+      id-type: auto
+      
+      # 逻辑删除配置
+      # 功能：配置逻辑删除的值类型和默认值
+      # 技术：MyBatis Plus逻辑删除机制
+      # 优势：数据安全，支持数据恢复
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+# ==========================================
+# 4. 雪花算法配置
+# 功能：分布式唯一ID生成器配置
+# 技术：Snowflake算法实现
+# 优势：高性能、全局唯一、时间有序的ID生成
+# ==========================================
+snowflake:
+  # 机器ID配置
+  # 功能：标识当前服务实例的唯一机器ID
+  # 技术：使用0-1023范围内的整数值
+  # 优势：确保不同实例生成的ID不冲突
+  machine-id: 1
+  
+  # 数据中心ID配置
+  # 功能：标识当前数据中心的唯一ID
+  # 技术：使用0-31范围内的整数值
+  # 优势：支持多数据中心部署
+  datacenter-id: 1
+  
+  # 起始时间戳配置（毫秒）
+  # 功能：雪花算法的时间起点，用于计算相对时间戳
+  # 技术：使用2024-01-01 00:00:00的时间戳
+  # 优势：延长ID生成器的使用寿命
+  epoch: 1704067200000
+
+# ==========================================
+# 5. API文档配置
+# 功能：自动生成和展示API文档
+# 技术：SpringDoc OpenAPI 3.0规范
+# 优势：自动化文档生成，提高开发效率和API可维护性
+# ==========================================
+springdoc:
+  api-docs:
+    # API文档生成开关
+    # 功能：控制是否生成OpenAPI文档
+    # 技术：SpringDoc自动配置
+    # 优势：便于开发调试和接口测试
+    enabled: true
+    path: /v3/api-docs
+    
+  swagger-ui:
+    # Swagger UI配置
+    # 功能：提供可视化API文档界面
+    # 技术：Swagger UI前端框架
+    # 优势：直观的API文档展示和在线测试
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+
+# ==========================================
+# 6.1 文件上传基础目录（自定义）
+# 功能：控制静态资源映射所使用的物理根目录
+# 技术：可配置路径，默认指向模块内 uploads 目录
+# 优势：避免依赖工作目录；便于生产环境切换为持久化挂载目录
+# ==========================================
+app:
+  upload:
+    base-dir: ${user.dir}/shop-user/uploads
+
+# ==========================================
+# 6. JWT安全配置
+# 功能：JSON Web Token认证和授权配置
+# 技术：JWT标准和HS512加密算法
+# 优势：无状态认证，支持分布式部署
+# ==========================================
+jwt:
+  # JWT密钥配置
+  # 功能：用于JWT签名和验证的密钥
+  # 技术：HS512对称加密算法
+  # 优势：高安全性，密钥长度满足HS512要求
+  secret: fenixShoppingSecretKeyForHS512Algorithm1234567890123456789012345678901234567890123456789012345678901234567890
+  
+  # JWT过期时间配置
+  # 功能：设置访问令牌的有效期
+  # 技术：毫秒时间戳计算
+  # 优势：平衡安全性和用户体验（24小时）
+  expiration: 86400000  # 24小时(ms)
+  
+  # JWT请求头配置
+  # 功能：指定JWT令牌在HTTP请求头中的字段名
+  # 技术：HTTP Authorization头标准
+  # 优势：符合HTTP认证标准
+  header: Authorization
+  
+  # JWT令牌前缀配置
+  # 功能：JWT令牌值的前缀标识
+  # 技术：Bearer Token标准
+  # 优势：符合OAuth 2.0规范
+  prefix: Bearer
+
+# ==========================================
+# 7. 统一日志配置
+# 功能：集中管理所有组件的日志级别
+# 技术：SLF4J + Logback日志框架
+# 优势：统一日志管理，便于问题排查和性能监控
+# ==========================================
+logging:
+  level:
+    # 根日志级别
+    # 功能：设置全局默认日志级别
+    # 技术：Logback日志级别控制
+    # 优势：平衡日志详细程度和性能
+    root: INFO
+    
+    # Spring框架日志级别
+    # 功能：控制Spring框架内部日志输出
+    # 技术：包级别日志控制
+    # 优势：减少框架噪音日志，专注业务日志
+    org.springframework: WARN
+    
+    # 业务代码日志级别
+    # 功能：控制业务逻辑日志输出
+    # 技术：包级别日志控制
+    # 优势：便于业务问题排查和监控
+    com.fenix.shop: INFO
+    
+    # 雪花算法相关日志级别
+    # 功能：控制ID生成器相关组件日志
+    # 技术：类级别日志控制
+    # 优势：监控ID生成器运行状态和性能
+    com.fenix.shop.common.util.com.fenix.shop.common.utils.SnowflakeIdGenerator: INFO
+    com.fenix.shop.common.config.SnowflakeConfig: INFO
+    com.fenix.shop.common.service.IdGeneratorService: INFO

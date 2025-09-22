@@ -1,0 +1,7 @@
+com/fenix/shop/common/util/SnowflakeIdGeneratorTest$PerformanceTests.class
+com/fenix/shop/common/util/SnowflakeIdGeneratorTest$ConfigurationValidationTests.class
+com/fenix/shop/common/util/SnowflakeIdGeneratorTest$ConcurrencyTests.class
+com/fenix/shop/common/util/SnowflakeIdGeneratorTest.class
+com/fenix/shop/common/service/IdGeneratorServiceTest.class
+com/fenix/shop/common/util/SnowflakeIdGeneratorTest$BasicFunctionalityTests.class
+com/fenix/shop/common/util/SnowflakeIdGeneratorTest$IdParsingTests.class
